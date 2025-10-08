@@ -8,6 +8,9 @@ references:
   - https://www.jit.io
 tags: []
 items:
+  - name: Verify that Github Branch Protection is properly configured
+    uses: >-
+      jitsecurity-controls/jit-plans/items/third_party_app/item-branch-protection-scm.yml@latest
   - name: Scan your code for vulnerabilities (SAST)
     uses: >-
       jitsecurity-controls/jit-plans/items/code/item-code-vulnerability.yml@latest
@@ -25,6 +28,9 @@ items:
   - name: Scan your code for license violations
     uses: >-
       jitsecurity-controls/jit-plans/items/code/item-license-compliance.yml@latest
+  - name: Verify that MFA for your GitHub organization is enabled
+    uses: >-
+      jitsecurity-controls/jit-plans/items/third_party_app/item-mfa-scm.yml@latest
   - name: Resiliency Testing
     uses: >-
       jitsecurity-controls/jit-plans/items/resiliency/item-resiliency-testing.yml@latest
@@ -40,23 +46,24 @@ items:
   - name: Generate a Software Bill of Materials (SBOM)
     uses: >-
       jitsecurity-controls/jit-plans/items/code/item-software-bill-of-materials.yml@latest
-  - name: Verify that MFA for your GitHub organization is enabled
-    uses: >-
-      jitsecurity-controls/jit-plans/items/third_party_app/item-mfa-scm.yml@latest
-  - name: Verify that Github Branch Protection is properly configured
-    uses: >-
-      jitsecurity-controls/jit-plans/items/third_party_app/item-branch-protection-scm.yml@latest
 override:
   workflows:
-    secret-detection:
-      jobs:
-        secret-detection:
-          enabled: true
-        secret-detection-trufflehog:
-          enabled: false
     sast:
       jobs:
         static-code-analysis-python-semgrep:
           enabled: true
         static-code-analysis-semgrep-pro:
           enabled: false
+    secret-detection:
+      jobs:
+        secret-detection:
+          enabled: false
+        secret-detection-trufflehog:
+          enabled: true
+          steps:
+            - name: Run Trufflehog
+              uses: registry.jit.io/control-trufflehog-alpine:latest
+              with:
+                args: filesystem ${WORK_DIR:-.} --json --only-verified
+                env:
+                  SECURITY_CONTROL_OUTPUT_FILE: /tmp/final-findings.json
